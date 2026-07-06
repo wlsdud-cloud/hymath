@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>통합 학생 관리 프로그램</title>
+<style>
+  :root{
+    --ink:#1a2332;
+    --paper:#f5f3ec;
+    --card:#ffffff;
+    --line:#e2ddd0;
+    --brand:#2d5f5d;      /* deep teal */
+    --brand-soft:#e4efee;
+    --gold:#c9832a;       /* mustard accent */
+    --gold-soft:#f7ecd7;
+    --present:#2f8f5b;
+    --present-bg:#e6f4ec;
+    --absent:#c14b45;
+    --absent-bg:#fbeae9;
+    --late:#c9832a;
+    --late-bg:#f7ecd7;
+    --muted:#7b7566;
+    --radius:14px;
+    --shadow:0 1px 3px rgba(26,35,50,.08), 0 8px 24px rgba(26,35,50,.06);
+    --mono:"SF Mono",ui-monospace,"Menlo",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ── Header ─────────────────────────── */
+  header{
+    background:var(--ink);
+    color:var(--paper);
+    padding:22px 28px;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{
+    width:44px;height:44px;border-radius:12px;
+    background:linear-gradient(135deg,var(--brand),#3d7d7a);
+    display:grid;place-items:center;font-size:22px;flex:none;
+  }
+  .brand h1{font-size:19px;font-weight:800;letter-spacing:-.4px}
+  .brand p{font-size:12.5px;color:#a9b3c0;font-weight:500}
+  .stat-strip{display:flex;gap:26px}
+  .stat-strip .s{text-align:center}
+  .stat-strip .num{font-size:22px;font-weight:800;font-family:var(--mono);color:#fff}
+  .stat-strip .lab{font-size:11px;color:#a9b3c0;letter-spacing:.3px}
+
+  /* ── Tabs ───────────────────────────── */
+  nav.tabs{
+    background:var(--card);border-bottom:1px solid var(--line);
+    display:flex;padding:0 28px;position:sticky;top:0;z-index:10;
+    overflow-x:auto;
+  }
+  nav.tabs button{
+    background:none;border:none;cursor:pointer;
+    padding:16px 20px;font-size:14.5px;font-weight:600;
+    color:var(--muted);position:relative;white-space:nowrap;
+    font-family:inherit;transition:color .15s;
+  }
+  nav.tabs button:hover{color:var(--ink)}
+  nav.tabs button.active{color:var(--brand)}
+  nav.tabs button.active::after{
+    content:"";position:absolute;left:14px;right:14px;bottom:-1px;
+    height:3px;background:var(--brand);border-radius:3px 3px 0 0;
+  }
+
+  /* ── Layout ─────────────────────────── */
+  main{max-width:1080px;margin:0 auto;padding:28px 24px 60px}
+  .panel{display:none;animation:fade .25s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .section-title{
+    font-size:13px;font-weight:700;letter-spacing:.6px;
+    color:var(--gold);text-transform:uppercase;margin-bottom:4px;
+  }
+  .section-head{margin-bottom:18px}
+  .section-head h2{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .section-head .desc{color:var(--muted);font-size:14px;margin-top:2px}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);
+  }
+  .card-pad{padding:22px}
+
+  .grid-2{display:grid;grid-template-columns:340px 1fr;gap:22px;align-items:start}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+
+  /* ── Forms ──────────────────────────── */
+  label.fl{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:14px 0 5px}
+  label.fl:first-child{margin-top:0}
+  input,select{
+    width:100%;padding:11px 13px;font-size:14.5px;font-family:inherit;
+    border:1.5px solid var(--line);border-radius:10px;background:#fbfaf6;color:var(--ink);
+    transition:border .15s,box-shadow .15s;
+  }
+  input:focus,select:focus{
+    outline:none;border-color:var(--brand);
+    box-shadow:0 0 0 3px var(--brand-soft);background:#fff;
+  }
+  .row{display:flex;gap:10px}
+  .row>div{flex:1}
+
+  button.btn{
+    font-family:inherit;font-weight:700;font-size:14.5px;cursor:pointer;
+    border:none;border-radius:10px;padding:12px 18px;transition:transform .08s,filter .15s;
+  }
+  button.btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--brand);color:#fff;width:100%;margin-top:18px}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-gold{background:var(--gold);color:#fff}
+  .btn-gold:hover{filter:brightness(1.06)}
+  .btn-ghost{background:var(--brand-soft);color:var(--brand);padding:8px 14px;font-size:13px}
+  .btn-sm{padding:7px 12px;font-size:13px}
+
+  /* ── Student list ───────────────────── */
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .toolbar input{flex:1;min-width:180px}
+  .toolbar select{width:auto;min-width:120px}
+
+  table{width:100%;border-collapse:collapse}
+  th{
+    text-align:left;font-size:12px;font-weight:700;color:var(--muted);
+    letter-spacing:.4px;padding:10px 12px;border-bottom:2px solid var(--line);
+    text-transform:uppercase;
+  }
+  td{padding:13px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr{transition:background .12s}
+  tbody tr:hover{background:#faf8f2}
+  .avatar{
+    width:34px;height:34px;border-radius:9px;background:var(--gold-soft);color:var(--gold);
+    display:inline-grid;place-items:center;font-weight:800;font-size:14px;margin-right:10px;
+    vertical-align:middle;
+  }
+  .name-cell{display:flex;align-items:center}
+  .grade-pill{
+    display:inline-block;background:var(--brand-soft);color:var(--brand);
+    font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;
+  }
+  .del-x{background:none;border:none;cursor:pointer;color:var(--absent);font-size:13px;font-weight:600;font-family:inherit;padding:4px 8px;border-radius:6px}
+  .del-x:hover{background:var(--absent-bg)}
+
+  .empty{text-align:center;padding:44px 20px;color:var(--muted)}
+  .empty .ico{font-size:40px;margin-bottom:10px;opacity:.5}
+
+  /* ── Attendance ─────────────────────── */
+  .date-bar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .date-bar input[type=date]{width:auto}
+  .att-summary{display:flex;gap:10px;margin-left:auto}
+  .chip{font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:20px}
+  .chip.p{background:var(--present-bg);color:var(--present)}
+  .chip.a{background:var(--absent-bg);color:var(--absent)}
+  .chip.l{background:var(--late-bg);color:var(--late)}
+
+  .att-row{
+    display:flex;align-items:center;gap:14px;padding:14px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .att-row:last-child{border-bottom:none}
+  .att-row .info{flex:1}
+  .att-row .info .nm{font-weight:700;font-size:15px}
+  .att-row .info .meta{font-size:12.5px;color:var(--muted)}
+  .seg{display:flex;gap:6px;background:#f0ede4;padding:4px;border-radius:11px}
+  .seg button{
+    border:none;background:none;cursor:pointer;font-family:inherit;
+    font-weight:700;font-size:13px;padding:7px 14px;border-radius:8px;color:var(--muted);transition:.12s;
+  }
+  .seg button.on-p{background:var(--present);color:#fff}
+  .seg button.on-a{background:var(--absent);color:#fff}
+  .seg button.on-l{background:var(--late);color:#fff}
+
+  /* ── Tests ──────────────────────────── */
+  .score-input-card{margin-bottom:22px}
+  .score-form{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end}
+  @media(max-width:700px){.score-form{grid-template-columns:1fr 1fr}}
+  .score-badge{
+    display:inline-grid;place-items:center;width:46px;height:46px;border-radius:12px;
+    font-weight:800;font-size:16px;font-family:var(--mono);color:#fff;
+  }
+  .g-A{background:#2f8f5b}.g-B{background:#3d7d7a}.g-C{background:#c9832a}
+  .g-D{background:#d67d3e}.g-F{background:#c14b45}
+  .test-name{font-weight:600;color:var(--muted);font-size:13px}
+  .progress{height:7px;background:#eee9dd;border-radius:20px;overflow:hidden;margin-top:6px;max-width:160px}
+  .progress > i{display:block;height:100%;border-radius:20px;background:var(--brand)}
+
+  footer{text-align:center;color:var(--muted);font-size:12.5px;padding:24px}
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600;
+    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s;z-index:99;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">🎓</div>
+    <div>
+      <h1>통합 학생 관리 프로그램</h1>
+      <p>출결 및 테스트 결과 관리 시스템</p>
+    </div>
+  </div>
+  <div class="stat-strip">
+    <div class="s"><div class="num" id="statStudents">0</div><div class="lab">등록 학생</div></div>
+    <div class="s"><div class="num" id="statPresent">0%</div><div class="lab">오늘 출석률</div></div>
+    <div class="s"><div class="num" id="statAvg">-</div><div class="lab">전체 평균점수</div></div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="students">👥 학생 명단</button>
+  <button data-tab="attendance">📅 출결 관리</button>
+  <button data-tab="tests">📝 테스트 결과</button>
+</nav>
+
+<main>
+  <!-- ═══ 학생 명단 ═══ -->
+  <section class="panel active" id="students">
+    <div class="section-head">
+      <div class="section-title">Student Roster</div>
+      <h2>학생 명단 등록 및 관리</h2>
+      <div class="desc">학생의 이름, 학년, 학교를 등록하고 명단을 관리합니다.</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-pad">
+        <label class="fl">이름</label>
+        <input id="in-name" placeholder="예: 홍길동" maxlength="20">
+        <div class="row">
+          <div>
+            <label class="fl">학년</label>
+            <select id="in-grade">
+              <option value="">선택</option>
+              <optgroup label="초등학교">
+                <option>초1</option><option>초2</option><option>초3</option>
+                <option>초4</option><option>초5</option><option>초6</option>
+              </optgroup>
+              <optgroup label="중학교">
+                <option>중1</option><option>중2</option><option>중3</option>
+              </optgroup>
+              <optgroup label="고등학교">
+                <option>고1</option><option>고2</option><option>고3</option>
+              </optgroup>
+            </select>
+          </div>
+          <div>
+            <label class="fl">학교</label>
+            <input id="in-school" placeholder="예: 대구초등학교" maxlength="30">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addStudent()">＋ 학생 등록하기</button>
+      </div>
+
+      <div class="card card-pad">
+        <div class="toolbar">
+          <input id="search" placeholder="🔍 이름·학교 검색" oninput="renderStudents()">
+          <select id="filterGrade" onchange="renderStudents()">
+            <option value="">전체 학년</option>
+          </select>
+        </div>
+        <div id="studentTableWrap"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 출결 관리 ═══ -->
+  <section class="panel" id="attendance">
+    <div class="section-head">
+      <div class="section-title">Attendance</div>
+      <h2>출결 현황 체크</h2>
+      <div class="desc">날짜를 선택하고 학생별 출석 · 결석 · 지각을 기록합니다.</div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="date-bar">
+        <label class="fl" style="margin:0">기준 날짜</label>
+        <input type="date" id="attDate" onchange="renderAttendance()">
+        <div class="att-summary" id="attSummary"></div>
+      </div>
+      <div id="attList"></div>
+    </div>
+  </section>
+
+  <!-- ═══ 테스트 결과 ═══ -->
+  <section class="panel" id="tests">
+    <div class="section-head">
+      <div class="section-title">Test Results</div>
+      <h2>테스트 결과 관리</h2>
+      <div class="desc">학생별 시험 점수를 입력하고 성적 목록을 확인합니다.</div>
+    </div>
+
+    <div class="card card-pad score-input-card">
+      <div class="score-form">
+        <div>
+          <label class="fl">학생</label>
+          <select id="ts-student"><option value="">학생 선택</option></select>
+        </div>
+        <div>
+          <label class="fl">시험명</label>
+          <input id="ts-name" placeholder="예: 3월 모의고사" maxlength="30">
+        </div>
+        <div>
+          <label class="fl">점수 (0~100)</label>
+          <input id="ts-score" type="number" min="0" max="100" placeholder="0">
+        </div>
+        <button class="btn btn-gold" onclick="addScore()">점수 입력</button>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="toolbar">
+        <select id="ts-filter" onchange="renderScores()" style="width:auto">
+          <option value="">전체 학생 성적</option>
+        </select>
+      </div>
+      <div id="scoreTableWrap"></div>
+    </div>
+  </section>
+</main>
+
+<footer>© 통합 학생 관리 프로그램 · 데이터는 브라우저 세션에 임시 저장됩니다.</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─── 데이터 저장소 (메모리) ─── */
+let students = [];        // {id,name,grade,school}
+let attendance = {};      // { "YYYY-MM-DD": { studentId: "present|absent|late" } }
+let scores = [];          // {id, studentId, name(시험명), score}
+let uid = 1;
+
+/* ─── 유틸 ─── */
+const $ = s => document.querySelector(s);
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2000);
+}
+function todayStr(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+function initials(name){ return name ? name.slice(0,1) : '?'; }
+function gradeToLetter(s){
+  if(s>=90) return 'A'; if(s>=80) return 'B'; if(s>=70) return 'C';
+  if(s>=60) return 'D'; return 'F';
+}
+
+/* ─── 탭 전환 ─── */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    $('#'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='attendance') renderAttendance();
+    if(btn.dataset.tab==='tests') renderScores();
+  };
+});
+
+/* ─── 학생 등록 ─── */
+function addStudent(){
+  const name = $('#in-name').value.trim();
+  const grade = $('#in-grade').value;
+  const school = $('#in-school').value.trim();
+  if(!name){ toast('이름을 입력해 주세요.'); $('#in-name').focus(); return; }
+  if(!grade){ toast('학년을 선택해 주세요.'); return; }
+  students.push({ id: uid++, name, grade, school: school||'-' });
+  $('#in-name').value=''; $('#in-school').value=''; $('#in-grade').value='';
+  toast(name + ' 학생을 등록했습니다.');
+  refreshAll();
+  $('#in-name').focus();
+}
+
+function deleteStudent(id){
+  const s = students.find(x=>x.id===id);
+  if(!confirm((s?s.name:'학생')+' 님을 삭제할까요? 관련 출결·성적 기록도 함께 삭제됩니다.')) return;
+  students = students.filter(x=>x.id!==id);
+  scores = scores.filter(x=>x.studentId!==id);
+  Object.keys(attendance).forEach(d=>{ delete attendance[d][id]; });
+  toast('삭제되었습니다.');
+  refreshAll();
+}
+
+/* ─── 학생 명단 렌더 ─── */
+function renderStudents(){
+  const q = $('#search').value.trim().toLowerCase();
+  const fg = $('#filterGrade').value;
+  const wrap = $('#studentTableWrap');
+  let list = students.filter(s=>{
+    const matchQ = !q || s.name.toLowerCase().includes(q) || s.school.toLowerCase().includes(q);
+    const matchG = !fg || s.grade===fg;
+    return matchQ && matchG;
+  });
+  if(students.length===0){
+    wrap.innerHTML = `<div class="empty"><div class="ico">📋</div>아직 등록된 학생이 없습니다.<br>왼쪽에서 첫 학생을 등록해 보세요.</div>`;
+    return;
+  }
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty"><div class="ico">🔍</div>검색 결과가 없습니다.</div>`;
+    return;
+  }
+  let rows = list.map(s=>`
+    <tr>
+      <td><div class="name-cell"><span class="avatar">${initials(s.name)}</span><b>${escapeHtml(s.name)}</b></div></td>
+      <td><span class="grade-pill">${s.grade}</span></td>
+      <td>${escapeHtml(s.school)}</td>
+      <td style="text-align:right"><button class="del-x" onclick="deleteStudent(${s.id})">삭제</button></td>
+    </tr>`).join('');
+  wrap.innerHTML = `<table><thead><tr>
+      <th>이름</th><th>학년</th><th>학교</th><th style="text-align:right">관리</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ─── 출결 렌더 ─── */
+function setAttendance(studentId, status){
+  const date = $('#attDate').value || todayStr();
+  if(!attendance[date]) attendance[date] = {};
+  attendance[date][studentId] = status;
+  renderAttendance();
+  updateHeaderStats();
+}
+function renderAttendance(){
+  if(!$('#attDate').value) $('#attDate').value = todayStr();
+  const date = $('#attDate').value;
+  const day = attendance[date] || {};
+  const list = $('#attList');
+  if(students.length===0){
+    list.innerHTML = `<div class="empty"><div class="ico">📅</div>등록된 학생이 없습니다.<br>먼저 학생 명단을 등록해 주세요.</div>`;
+    $('#attSummary').innerHTML=''; return;
+  }
+  let p=0,a=0,l=0;
+  let html = students.map(s=>{
+    const st = day[s.id];
+    if(st==='present')p++; if(st==='absent')a++; if(st==='late')l++;
+    return `
+    <div class="att-row">
+      <span class="avatar">${initials(s.name)}</span>
+      <div class="info"><div class="nm">${escapeHtml(s.name)}</div>
+        <div class="meta">${s.grade} · ${escapeHtml(s.school)}</div></div>
+      <div class="seg">
+        <button class="${st==='present'?'on-p':''}" onclick="setAttendance(${s.id},'present')">출석</button>
+        <button class="${st==='absent'?'on-a':''}" onclick="setAttendance(${s.id},'absent')">결석</button>
+        <button class="${st==='late'?'on-l':''}" onclick="setAttendance(${s.id},'late')">지각</button>
+      </div>
+    </div>`;
+  }).join('');
+  list.innerHTML = html;
+  $('#attSummary').innerHTML =
+    `<span class="chip p">출석 ${p}</span><span class="chip a">결석 ${a}</span><span class="chip l">지각 ${l}</span>`;
+}
+
+/* ─── 점수 입력 ─── */
+function addScore(){
+  const sid = parseInt($('#ts-student').value);
+  const tname = $('#ts-name').value.trim();
+  const score = parseInt($('#ts-score').value);
+  if(!sid){ toast('학생을 선택해 주세요.'); return; }
+  if(!tname){ toast('시험명을 입력해 주세요.'); return; }
+  if(isNaN(score) || score<0 || score>100){ toast('0~100 사이 점수를 입력해 주세요.'); return; }
+  scores.push({ id: uid++, studentId: sid, name: tname, score });
+  $('#ts-name').value=''; $('#ts-score').value='';
+  toast('점수를 저장했습니다.');
+  renderScores(); updateHeaderStats();
+}
+function deleteScore(id){
+  scores = scores.filter(x=>x.id!==id);
+  renderScores(); updateHeaderStats();
+}
+
+/* ─── 성적 렌더 ─── */
+function renderScores(){
+  const filter = $('#ts-filter').value;
+  const wrap = $('#scoreTableWrap');
+  let list = scores.map(sc=>({...sc, student: students.find(s=>s.id===sc.studentId)}))
+                   .filter(sc=>sc.student);
+  if(filter) list = list.filter(sc=>sc.studentId===parseInt(filter));
+  if(scores.length===0 || list.length===0){
+    wrap.innerHTML = `<div class="empty"><div class="ico">📝</div>입력된 성적이 없습니다.<br>위에서 학생 점수를 입력해 보세요.</div>`;
+    return;
+  }
+  // 학생별 그룹
+  const grouped = {};
+  list.forEach(sc=>{ (grouped[sc.studentId]=grouped[sc.studentId]||[]).push(sc); });
+  let html = '';
+  Object.values(grouped).forEach(arr=>{
+    const st = arr[0].student;
+    const avg = Math.round(arr.reduce((s,x)=>s+x.score,0)/arr.length);
+    html += `<div style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span class="avatar">${initials(st.name)}</span>
+        <b style="font-size:15px">${escapeHtml(st.name)}</b>
+        <span class="grade-pill">${st.grade}</span>
+        <span style="margin-left:auto;font-size:13px;color:var(--muted)">평균 <b style="color:var(--ink);font-family:var(--mono)">${avg}점</b></span>
+      </div>
+      <table><thead><tr><th>시험명</th><th>점수</th><th>등급</th><th></th><th style="text-align:right">관리</th></tr></thead><tbody>`;
+    arr.forEach(sc=>{
+      const g = gradeToLetter(sc.score);
+      html += `<tr>
+        <td class="test-name">${escapeHtml(sc.name)}</td>
+        <td><b style="font-family:var(--mono);font-size:15px">${sc.score}</b></td>
+        <td><span class="score-badge g-${g}" style="width:34px;height:34px;font-size:14px">${g}</span></td>
+        <td><div class="progress"><i style="width:${sc.score}%"></i></div></td>
+        <td style="text-align:right"><button class="del-x" onclick="deleteScore(${sc.id})">삭제</button></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+  wrap.innerHTML = html;
+}
+
+/* ─── 셀렉트/필터 옵션 갱신 ─── */
+function refreshSelectors(){
+  // 학년 필터
+  const grades = [...new Set(students.map(s=>s.grade))];
+  const fg = $('#filterGrade'); const cur = fg.value;
+  fg.innerHTML = '<option value="">전체 학년</option>' + grades.map(g=>`<option>${g}</option>`).join('');
+  fg.value = cur;
+  // 테스트 학생 셀렉트
+  const ts = $('#ts-student'); const curTs = ts.value;
+  ts.innerHTML = '<option value="">학생 선택</option>' + students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)} (${s.grade})</option>`).join('');
+  ts.value = curTs;
+  const tf = $('#ts-filter'); const curTf = tf.value;
+  tf.innerHTML = '<option value="">전체 학생 성적</option>' + students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  tf.value = curTf;
+}
+
+/* ─── 상단 통계 ─── */
+function updateHeaderStats(){
+  $('#statStudents').textContent = students.length;
+  const date = $('#attDate').value || todayStr();
+  const day = attendance[date] || {};
+  const total = students.length;
+  const present = students.filter(s=>day[s.id]==='present').length;
+  $('#statPresent').textContent = total ? Math.round(present/total*100)+'%' : '0%';
+  $('#statAvg').textContent = scores.length ? Math.round(scores.reduce((a,b)=>a+b.score,0)/scores.length)+'점' : '-';
+}
+
+/* ─── HTML escape ─── */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ─── 전체 갱신 ─── */
+function refreshAll(){
+  renderStudents(); refreshSelectors(); updateHeaderStats();
+}
+
+/* ─── 초기화 ─── */
+$('#attDate').value = todayStr();
+$('#in-name').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#in-school').focus(); });
+$('#in-school').addEventListener('keydown', e=>{ if(e.key==='Enter') addStudent(); });
+refreshAll();
+</script>
+</body>
+</html>
